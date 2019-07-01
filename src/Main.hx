@@ -3,12 +3,13 @@ import tink.core.Promise;
 import tink.http.containers.*;
 import tink.http.Response;
 import tink.web.routing.*;
+
 using StringTools;
 
 @:native('DOMNode')
 extern class DOMNode {
-        var nodeName:String;
-        var nodeValue:String;
+	var nodeName:String;
+	var nodeValue:String;
 	var textContent:String;
 }
 
@@ -53,28 +54,44 @@ class Root {
 		return Future.async(completer -> {
 			var http = new haxe.Http(query.url);
 			http.onData = (data:String) -> {
-				var dom = new DOMDocument();
-				dom.loadHTML('<?xml version="1.0" encoding="UTF-8"?>${data}');
-				var xpath = new DOMXPath(dom);
-				var nodes = xpath.query(query.query);
-				var res = new Array<{
-					name:String,
-					text:String
-				}>();
-				for (i in 0...nodes.length) {
-					var node = nodes.item(i);
-					res.push({
-						name: node.nodeName,
-						text: node.nodeValue.trim()
+				try {
+					var dom = new DOMDocument();
+					dom.loadHTML('<?xml version="1.0" encoding="UTF-8"?>${data}');
+					var xpath = new DOMXPath(dom);
+					var nodes = xpath.query(query.query);
+					var res = new Array<{
+						name:String,
+						text:String
+					}>();
+					for (i in 0...nodes.length) {
+						var node = nodes.item(i);
+						res.push({
+							name: node.nodeName,
+							text: node.nodeValue.trim()
+						});
+					}
+
+					completer({
+						code: 0,
+						errorText: null,
+						nodes: res
+					});
+				} catch (e:Dynamic) {
+					completer({
+						code: 1,
+						errorText: null,
+						nodes: null
 					});
 				}
 
-				completer({
-                                        nodes: res
-                                });
+				return null;
 			}
 			http.onError = (error) -> {
-				trace('error: $error');
+				completer({
+					code: 2,
+					errorText: "Wrong URL",
+					nodes: null
+				});
 			}
 			http.request();
 		});
@@ -82,7 +99,9 @@ class Root {
 }
 
 typedef Result = {
-	nodes:Array<{
+	code:Int,
+	?errorText:String,
+	?nodes:Array<{
 		name:String,
 		text:String
 	}>
